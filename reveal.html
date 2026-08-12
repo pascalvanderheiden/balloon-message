@@ -82,6 +82,12 @@
         display: flex;
         flex-direction: column;
         align-items: center;
+        border: 0;
+        padding: 0;
+        background: none;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
       }
 
       .balloon {
@@ -242,12 +248,12 @@
         <div class="floating-cloud c2"></div>
         <div class="floating-cloud c3"></div>
 
-        <div class="balloon-wrap">
+        <button id="reveal-target" class="balloon-wrap" type="button" aria-label="Reveal the message">
           <div id="balloon" class="balloon" style="--balloon-color: var(--pink);">
             <div class="balloon-tail"></div>
           </div>
           <div id="message-preview" class="balloon-message">Tap to reveal</div>
-        </div>
+        </button>
       </div>
 
       <div class="actions">
@@ -261,13 +267,15 @@
 
       <div id="meta" class="meta hidden"></div>
       <div id="status-box" class="status-box hidden" aria-live="polite"></div>
-      <div class="link-row"><a id="home-link" href="/" class="hidden">Back to the sender page</a></div>
+      <div class="link-row"><a id="home-link" href="./" class="hidden">Back to the sender page</a></div>
     </main>
 
     <script>
       const rawToken = window.location.pathname.split('/').filter(Boolean).pop();
       const token = rawToken === 'reveal.html' ? '' : (rawToken || '');
+      const homeUrl = rawToken === 'reveal.html' ? './' : '/';
       const revealButton = document.getElementById('reveal-button');
+      const revealTarget = document.getElementById('reveal-target');
       const homeButton = document.getElementById('home-button');
       const messageBox = document.getElementById('message-box');
       const messageText = document.getElementById('message-text');
@@ -277,6 +285,7 @@
       const heading = document.getElementById('heading');
       const statusBox = document.getElementById('status-box');
       const homeLink = document.getElementById('home-link');
+      homeLink.href = homeUrl;
       const sharedPayload = (() => {
         if (!window.location.hash) {
           return null;
@@ -391,7 +400,8 @@
       }
 
       revealButton.addEventListener('click', revealMessage);
-      homeButton.addEventListener('click', () => window.location.href = '/');
+      revealTarget.addEventListener('click', revealMessage);
+      homeButton.addEventListener('click', () => window.location.href = homeUrl);
 
       if (sharedPayload) {
         balloon.style.setProperty('--balloon-color', `var(--${sharedPayload.balloonColor || 'pink'})`);
