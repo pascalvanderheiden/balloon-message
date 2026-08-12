@@ -577,6 +577,45 @@
       document.getElementById('copy-link').addEventListener('click', copyUrl);
       document.getElementById('copy-link-inline').addEventListener('click', copyUrl);
 
+      function sanitizeText(value, fallback = '') {
+        const text = typeof value === 'string' ? value.trim() : fallback;
+        return text || fallback;
+      }
+
+      function createStaticShareUrl(payload) {
+        const serializedPayload = JSON.stringify({
+          sender: sanitizeText(payload.sender).slice(0, 40),
+          recipient: sanitizeText(payload.recipient, 'someone special').slice(0, 40),
+          message: sanitizeText(payload.message).slice(0, 180),
+          balloonColor: sanitizeText(payload.balloonColor, 'pink').toLowerCase(),
+        });
+        const revealUrl = new URL('reveal.html', window.location.href);
+        revealUrl.hash = encodeURIComponent(serializedPayload);
+        return revealUrl.toString();
+      }
+
+      function applyStaticShare(payload) {
+        const staticShareUrl = createStaticShareUrl(payload);
+        shareLink.value = staticShareUrl;
+        openLink.href = staticShareUrl;
+        successBox.classList.remove('hidden');
+        successBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        showStatus('Your balloon is ready to share. This link can be opened more than once because the message is embedded directly in the link.');
+      }
+
+      async function readJsonResponse(response) {
+        const responseText = await response.text();
+        if (!responseText) {
+          return null;
+        }
+
+        try {
+          return JSON.parse(responseText);
+        } catch (_error) {
+          return null;
+        }
+      }
+
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
         clearStatus();
@@ -592,23 +631,39 @@
         submitButton.textContent = 'Creating...';
 
         try {
-          const response = await fetch('/api/messages', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          });
-
-          const result = await response.json();
-
-          if (!response.ok) {
-            throw new Error(result.error || 'Could not create the balloon.');
+          let response;
+          try {
+            response = await fetch('/api/messages', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+          } catch (_error) {
+            applyStaticShare(payload);
+            return;
           }
 
-          shareLink.value = result.shareUrl;
-          openLink.href = result.shareUrl;
-          successBox.classList.remove('hidden');
-          successBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          showStatus('Your balloon is ready to share.');
+          const result = await readJsonResponse(response);
+
+          if (response.status === 404) {
+            applyStaticShare(payload);
+            return;
+          }
+
+          if (!response.ok) {
+            throw new Error((result && result.error) || 'Could not create the balloon.');
+          }
+
+          if (response.ok && result && result.shareUrl) {
+            shareLink.value = result.shareUrl;
+            openLink.href = result.shareUrl;
+            successBox.classList.remove('hidden');
+            successBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            showStatus('Your balloon is ready to share.');
+            return;
+          }
+
+          throw new Error('Could not create the balloon.');
         } catch (error) {
           showStatus(error.message || 'Could not create the balloon.', true);
         } finally {
