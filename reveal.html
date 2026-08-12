@@ -265,7 +265,8 @@
     </main>
 
     <script>
-      const token = window.location.pathname.split('/').filter(Boolean).pop();
+      const rawToken = window.location.pathname.split('/').filter(Boolean).pop();
+      const token = rawToken && !rawToken.includes('.') ? rawToken : '';
       const revealButton = document.getElementById('reveal-button');
       const homeButton = document.getElementById('home-button');
       const messageBox = document.getElementById('message-box');
@@ -276,6 +277,36 @@
       const heading = document.getElementById('heading');
       const statusBox = document.getElementById('status-box');
       const homeLink = document.getElementById('home-link');
+      const sharedPayload = (() => {
+        if (!window.location.hash) {
+          return null;
+        }
+
+        try {
+          const decoded = decodeURIComponent(window.location.hash.slice(1));
+          const parsed = JSON.parse(decoded);
+          if (!parsed || typeof parsed !== 'object') {
+            return null;
+          }
+
+          const sender = typeof parsed.sender === 'string' ? parsed.sender.trim() : '';
+          const recipient = typeof parsed.recipient === 'string' ? parsed.recipient.trim() : '';
+          const message = typeof parsed.message === 'string' ? parsed.message.trim() : '';
+          const balloonColor = typeof parsed.balloonColor === 'string' ? parsed.balloonColor.trim().toLowerCase() : 'pink';
+          if (!message) {
+            return null;
+          }
+
+          return {
+            sender: sender || 'Someone kind',
+            recipient: recipient || 'someone special',
+            message,
+            balloonColor: balloonColor || 'pink',
+          };
+        } catch (_error) {
+          return null;
+        }
+      })();
 
       function setStatus(message, isError = false) {
         statusBox.textContent = message;
@@ -297,7 +328,33 @@
         messagePreview.textContent = 'No message';
       }
 
+      function parseJsonSafely(value) {
+        if (!value) {
+          return null;
+        }
+
+        try {
+          return JSON.parse(value);
+        } catch (_error) {
+          return null;
+        }
+      }
+
       async function revealMessage() {
+        if (sharedPayload) {
+          balloon.style.setProperty('--balloon-color', `var(--${sharedPayload.balloonColor || 'pink'})`);
+          messagePreview.textContent = sharedPayload.message;
+          messageText.textContent = `"${sharedPayload.message}"`;
+          messageBox.classList.remove('hidden');
+          meta.textContent = `From ${sharedPayload.sender} to ${sharedPayload.recipient}`;
+          meta.classList.remove('hidden');
+          heading.textContent = 'A balloon arrived!';
+          revealButton.textContent = 'Opened';
+          homeLink.classList.remove('hidden');
+          setStatus('This link was shared in static mode and can be opened more than once.');
+          return;
+        }
+
         if (!token) {
           setUnavailableState('This link is incomplete. Try creating a fresh balloon message.', false);
           return;
@@ -309,17 +366,17 @@
 
         try {
           const response = await fetch(`/api/messages/${token}/reveal`, { method: 'POST' });
-          const result = await response.json();
+          const result = parseJsonSafely(await response.text());
 
           if (!response.ok) {
-            throw new Error(result.error || 'The balloon could not be opened.');
+            throw new Error((result && result.error) || 'The balloon could not be opened.');
           }
 
-          balloon.style.setProperty('--balloon-color', `var(--${result.balloonColor || 'pink'})`);
-          messagePreview.textContent = result.message;
-          messageText.textContent = `"${result.message}"`;
+          balloon.style.setProperty('--balloon-color', `var(--${(result && result.balloonColor) || 'pink'})`);
+          messagePreview.textContent = result && result.message;
+          messageText.textContent = `"${result && result.message}"`;
           messageBox.classList.remove('hidden');
-          meta.textContent = `From ${result.sender} to ${result.recipient}`;
+          meta.textContent = `From ${result && result.sender} to ${result && result.recipient}`;
           meta.classList.remove('hidden');
           heading.textContent = 'A balloon arrived!';
           revealButton.textContent = 'Opened';
@@ -333,18 +390,24 @@
       revealButton.addEventListener('click', revealMessage);
       homeButton.addEventListener('click', () => window.location.href = '/');
 
-      if (token) {
+      if (sharedPayload) {
+        balloon.style.setProperty('--balloon-color', `var(--${sharedPayload.balloonColor || 'pink'})`);
+        messagePreview.textContent = 'Tap to reveal';
+        heading.textContent = `A balloon for ${sharedPayload.recipient}`;
+        meta.textContent = `This note is waiting for ${sharedPayload.recipient}.`;
+        meta.classList.remove('hidden');
+      } else if (token) {
         fetch(`/api/messages/${token}`)
           .then(async (response) => {
-            const data = await response.json();
+            const data = parseJsonSafely(await response.text());
             if (!response.ok) {
-              throw new Error(data.error || 'Message not available.');
+              throw new Error((data && data.error) || 'Message not available.');
             }
 
-            balloon.style.setProperty('--balloon-color', `var(--${data.balloonColor || 'pink'})`);
+            balloon.style.setProperty('--balloon-color', `var(--${(data && data.balloonColor) || 'pink'})`);
             messagePreview.textContent = 'Tap to reveal';
-            heading.textContent = `A balloon for ${data.recipient}`;
-            meta.textContent = `This note is waiting for ${data.recipient}.`;
+            heading.textContent = `A balloon for ${data && data.recipient}`;
+            meta.textContent = `This note is waiting for ${data && data.recipient}.`;
             meta.classList.remove('hidden');
           })
           .catch((error) => {
