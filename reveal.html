@@ -266,7 +266,7 @@
 
     <script>
       const rawToken = window.location.pathname.split('/').filter(Boolean).pop();
-      const token = rawToken && !rawToken.includes('.') ? rawToken : '';
+      const token = rawToken === 'reveal.html' ? '' : (rawToken || '');
       const revealButton = document.getElementById('reveal-button');
       const homeButton = document.getElementById('home-button');
       const messageBox = document.getElementById('message-box');
@@ -351,7 +351,7 @@
           heading.textContent = 'A balloon arrived!';
           revealButton.textContent = 'Opened';
           homeLink.classList.remove('hidden');
-          setStatus('This link was shared in static mode and can be opened more than once.');
+          setStatus('This link can be opened more than once. The message is embedded directly in the link.');
           return;
         }
 
@@ -371,12 +371,15 @@
           if (!response.ok) {
             throw new Error((result && result.error) || 'The balloon could not be opened.');
           }
+          if (!result || !result.message) {
+            throw new Error('The balloon could not be opened.');
+          }
 
           balloon.style.setProperty('--balloon-color', `var(--${(result && result.balloonColor) || 'pink'})`);
-          messagePreview.textContent = result && result.message;
-          messageText.textContent = `"${result && result.message}"`;
+          messagePreview.textContent = result.message;
+          messageText.textContent = `"${result.message}"`;
           messageBox.classList.remove('hidden');
-          meta.textContent = `From ${result && result.sender} to ${result && result.recipient}`;
+          meta.textContent = `From ${result.sender || 'Someone kind'} to ${result.recipient || 'someone special'}`;
           meta.classList.remove('hidden');
           heading.textContent = 'A balloon arrived!';
           revealButton.textContent = 'Opened';
@@ -403,11 +406,14 @@
             if (!response.ok) {
               throw new Error((data && data.error) || 'Message not available.');
             }
+            if (!data || !data.recipient) {
+              throw new Error('Message not available.');
+            }
 
-            balloon.style.setProperty('--balloon-color', `var(--${(data && data.balloonColor) || 'pink'})`);
+            balloon.style.setProperty('--balloon-color', `var(--${data.balloonColor || 'pink'})`);
             messagePreview.textContent = 'Tap to reveal';
-            heading.textContent = `A balloon for ${data && data.recipient}`;
-            meta.textContent = `This note is waiting for ${data && data.recipient}.`;
+            heading.textContent = `A balloon for ${data.recipient}`;
+            meta.textContent = `This note is waiting for ${data.recipient}.`;
             meta.classList.remove('hidden');
           })
           .catch((error) => {

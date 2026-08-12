@@ -594,6 +594,15 @@
         return revealUrl.toString();
       }
 
+      function applyStaticShare(payload) {
+        const staticShareUrl = createStaticShareUrl(payload);
+        shareLink.value = staticShareUrl;
+        openLink.href = staticShareUrl;
+        successBox.classList.remove('hidden');
+        successBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        showStatus('Your balloon is ready to share. This link can be opened more than once because the message is embedded directly in the link.');
+      }
+
       async function readJsonResponse(response) {
         const responseText = await response.text();
         if (!responseText) {
@@ -630,18 +639,18 @@
               body: JSON.stringify(payload),
             });
           } catch (_error) {
-            const staticShareUrl = createStaticShareUrl(payload);
-            shareLink.value = staticShareUrl;
-            openLink.href = staticShareUrl;
-            successBox.classList.remove('hidden');
-            successBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            showStatus('Your balloon is ready to share. This link works without the message API.');
+            applyStaticShare(payload);
             return;
           }
 
           const result = await readJsonResponse(response);
 
-          if (!response.ok && response.status !== 404) {
+          if (response.status === 404) {
+            applyStaticShare(payload);
+            return;
+          }
+
+          if (!response.ok) {
             throw new Error((result && result.error) || 'Could not create the balloon.');
           }
 
@@ -654,12 +663,7 @@
             return;
           }
 
-          const staticShareUrl = createStaticShareUrl(payload);
-          shareLink.value = staticShareUrl;
-          openLink.href = staticShareUrl;
-          successBox.classList.remove('hidden');
-          successBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          showStatus('Your balloon is ready to share. This link works without the message API.');
+          throw new Error('Could not create the balloon.');
         } catch (error) {
           showStatus(error.message || 'Could not create the balloon.', true);
         } finally {
