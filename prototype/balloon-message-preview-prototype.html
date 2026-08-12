@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Balloon Message Prototype</title>
+    <style>
+      :root {
+        --bg-1: #fdf6ef;
+        --bg-2: #ffe8d6;
+        --ink: #211827;
+        --muted: #5a4e68;
+        --panel: rgba(255,255,255,0.7);
+        --card: rgba(255,255,255,0.86);
+        --shadow: rgba(76, 43, 31, 0.12);
+        --pink: #ff5aa8;
+        --yellow: #ffd166;
+        --lavender: #d4b7ff;
+        --mint: #a7f3d0;
+        --peach: #ffb899;
+        --rose: #ff8d8d;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, "Segoe UI", sans-serif;
+        background: radial-gradient(circle at top, var(--bg-2), var(--bg-1) 46%, #f5eae6 100%);
+        color: var(--ink);
+      }
+
+      .page {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px 16px 96px;
+      }
+
+      .shell {
+        width: min(1100px, 100%);
+        border-radius: 28px;
+        background: rgba(255,255,255,0.42);
+        border: 1px solid rgba(80,48,57,0.08);
+        box-shadow: 0 24px 60px rgba(73, 47, 62, 0.12);
+        backdrop-filter: blur(12px);
+        padding: 28px;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .eye-brow {
+        letter-spacing: 0.12em;
+        font-size: 11px;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      h1 {
+        margin: 6px 0 0;
+        font-size: clamp(2rem, 4vw, 3rem);
+      }
+
+      .status {
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-size: 12px;
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(0,0,0,0.05);
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: 20px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border-radius: 24px;
+        border: 1px solid rgba(56,31,44,0.08);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.4);
+        padding: 24px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 16px;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      input, textarea {
+        width: 100%;
+        border-radius: 14px;
+        border: 1px solid rgba(68, 44, 68, 0.14);
+        background: rgba(255,255,255,0.8);
+        padding: 14px 16px;
+        font: inherit;
+        color: var(--ink);
+        margin-top: 8px;
+      }
+
+      textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+
+      .meta-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .preview {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 420px;
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.4));
+      }
+
+      .balloon-stage {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .balloon {
+        position: relative;
+        width: 200px;
+        height: 250px;
+        background: linear-gradient(180deg, var(--pink), #ff7ab9 70%, #f66dbd);
+        border-radius: 45% 45% 40% 40% / 45% 45% 60% 60%;
+        box-shadow: inset -18px -18px 0 rgba(255,255,255,0.1), 0 24px 60px rgba(255, 109, 170, 0.28);
+        transform: rotate(-4deg);
+        transition: transform 0.6s ease, filter 0.6s ease;
+      }
+
+      .balloon::before {
+        content: "";
+        position: absolute;
+        inset: 12px 24px auto 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.28);
+      }
+
+      .balloon::after {
+        content: "";
+        position: absolute;
+        width: 2px;
+        height: 120px;
+        background: rgba(55, 31, 42, 0.45);
+        bottom: -120px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      .knot {
+        position: absolute;
+        width: 18px;
+        height: 18px;
+        background: linear-gradient(180deg, #fff8f0, #e6d5c5);
+        border-radius: 50%;
+        left: 50%;
+        bottom: -120px;
+        transform: translateX(-50%);
+        box-shadow: 0 0 0 2px rgba(69,44,53,0.08);
+      }
+
+      .message-card {
+        position: absolute;
+        left: 50%;
+        top: 52%;
+        transform: translate(-50%, -50%) scale(0.7);
+        opacity: 0;
+        transition: opacity 0.45s ease, transform 0.45s ease;
+        width: min(260px, 74%);
+        padding: 18px 18px 14px;
+        border-radius: 18px;
+        background: rgba(255,255,255,0.96);
+        box-shadow: 0 18px 35px rgba(82, 52, 72, 0.16);
+        border: 1px solid rgba(68,44,68,0.08);
+        text-align: center;
+      }
+
+      .message-card.visible {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      .message-card strong {
+        display: block;
+        font-size: 11px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+
+      .meta-bubble {
+        position: absolute;
+        padding: 7px 13px;
+        border-radius: 999px;
+        font-size: 12px;
+        color: var(--ink);
+        background: rgba(255,255,255,0.8);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+      }
+
+      .bubble-left { left: 8%; top: 18%; }
+      .bubble-right { right: 8%; bottom: 18%; }
+
+      .variant-controls {
+        position: fixed;
+        bottom: 18px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 10px 16px;
+        border-radius: 999px;
+        background: rgba(34, 23, 32, 0.82);
+        color: white;
+        box-shadow: 0 18px 35px rgba(20, 11, 17, 0.28);
+        z-index: 20;
+      }
+
+      .variant-nav {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(255,255,255,0.15);
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+      }
+
+      .variant-name {
+        min-width: 150px;
+        text-align: center;
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .variant-button {
+        appearance: none;
+        border: none;
+        background: var(--pink);
+        color: white;
+        font: inherit;
+        font-weight: 700;
+        border-radius: 999px;
+        padding: 12px 18px;
+        cursor: pointer;
+        margin-top: 18px;
+        box-shadow: 0 12px 22px rgba(255, 90, 168, 0.28);
+      }
+
+      .variant-a .balloon { background: linear-gradient(180deg, #ff69b4, #ff8ecb 65%, #ffb7d5); }
+      .variant-b .balloon { background: linear-gradient(180deg, #b889ff, #dbb4ff 60%, #f6d3ff); }
+      .variant-c .balloon { background: linear-gradient(180deg, #ff8b5f, #ffbad2 60%, #ffd3a3); }
+
+      .variant-b .preview { background: linear-gradient(180deg, rgba(132, 104, 255, 0.12), rgba(255,255,255,0.32)); }
+      .variant-c .preview { background: radial-gradient(circle at top, rgba(255, 240, 188, 0.7), rgba(255,255,255,0.3) 45%); }
+
+      .variant-c .balloon {
+        width: 240px;
+        height: 290px;
+        animation: float 2.8s ease-in-out infinite alternate;
+      }
+
+      @keyframes float {
+        from { transform: rotate(-2deg) translateY(0px); }
+        to { transform: rotate(3deg) translateY(-14px); }
+      }
+
+      @media (max-width: 860px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .shell {
+          padding: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="shell variant-a" id="appShell">
+        <div class="header">
+          <div>
+            <div class="eye-brow">Balloon message</div>
+            <h1>Create a little surprise.</h1>
+          </div>
+          <div class="status">Sender preview</div>
+        </div>
+
+        <div class="layout">
+          <div class="panel">
+            <label>
+              To
+              <input value="Maya" aria-label="Recipient name" />
+            </label>
+
+            <label>
+              Sender
+              <input value="Sam" aria-label="Sender name" />
+            </label>
+
+            <label>
+              Message
+              <textarea aria-label="Message">You make my day feel lighter. Meet me at dusk for a surprise.</textarea>
+            </label>
+
+            <div class="meta-row">
+              <label>
+                Link expires
+                <input value="24 hours" aria-label="Link expiry" />
+              </label>
+              <label>
+                Delivery
+                <input value="Single reveal" aria-label="Delivery mode" />
+              </label>
+            </div>
+          </div>
+
+          <div class="panel preview">
+            <div class="balloon-stage">
+              <div class="meta-bubble bubble-left">unforgettable</div>
+              <div class="meta-bubble bubble-right">little surprise</div>
+              <div class="balloon" id="balloon" aria-label="Balloon preview">
+                <div class="knot"></div>
+              </div>
+              <div class="message-card" id="messageCard">
+                <strong>For Maya</strong>
+                You make my day feel lighter. Meet me at dusk for a surprise.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="variant-button" id="revealButton" type="button">Reveal the message</button>
+      </div>
+    </div>
+
+    <div class="variant-controls" aria-label="Prototype variant switcher">
+      <button class="variant-nav" type="button" id="prevButton" aria-label="Previous variant">←</button>
+      <div class="variant-name" id="variantLabel">A · Studio</div>
+      <button class="variant-nav" type="button" id="nextButton" aria-label="Next variant">→</button>
+    </div>
+
+    <script>
+      const variants = {
+        A: { label: 'A · Studio', title: 'Create a little surprise.', status: 'Sender preview' },
+        B: { label: 'B · Lift', title: 'A tiny lift of joy.', status: 'Share-ready' },
+        C: { label: 'C · Theater', title: 'Let the reveal do the talking.', status: 'Recipient reveal' }
+      };
+
+      const shell = document.getElementById('appShell');
+      const variantLabel = document.getElementById('variantLabel');
+      const revealButton = document.getElementById('revealButton');
+      const messageCard = document.getElementById('messageCard');
+      const balloon = document.getElementById('balloon');
+
+      function updateVariant(name) {
+        const variant = variants[name];
+        shell.className = `shell variant-${name.toLowerCase()}`;
+        document.querySelector('.header h1').textContent = variant.title;
+        document.querySelector('.status').textContent = variant.status;
+        variantLabel.textContent = variant.label;
+      }
+
+      function getVariantFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const variant = params.get('variant');
+        return variant && variants[variant] ? variant : 'A';
+      }
+
+      function setVariant(next) {
+        const params = new URLSearchParams(window.location.search);
+        params.set('variant', next);
+        const url = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState({}, '', url);
+        updateVariant(next);
+      }
+
+      function cycleVariant(step) {
+        const keys = Object.keys(variants);
+        const current = getVariantFromUrl();
+        const index = keys.indexOf(current);
+        const next = keys[(index + step + keys.length) % keys.length];
+        setVariant(next);
+      }
+
+      revealButton.addEventListener('click', () => {
+        const isVisible = messageCard.classList.toggle('visible');
+        balloon.style.transform = isVisible ? 'scale(1.06) rotate(-2deg)' : 'rotate(-4deg)';
+        balloon.style.filter = isVisible ? 'drop-shadow(0 18px 24px rgba(255, 90, 168, 0.25))' : 'none';
+        revealButton.textContent = isVisible ? 'Hide the message' : 'Reveal the message';
+      });
+
+      document.getElementById('prevButton').addEventListener('click', () => cycleVariant(-1));
+      document.getElementById('nextButton').addEventListener('click', () => cycleVariant(1));
+
+      document.addEventListener('keydown', (event) => {
+        const target = event.target;
+        const isTyping = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+        if (isTyping) return;
+        if (event.key === 'ArrowRight') cycleVariant(1);
+        if (event.key === 'ArrowLeft') cycleVariant(-1);
+      });
+
+      setVariant(getVariantFromUrl());
+    </script>
+  </body>
+</html>
